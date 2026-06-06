@@ -138,6 +138,8 @@ function simulateUserComment(commentText, stickerId) {
   // 비동기 작업을 위한 즉시 실행 함수
   (async function() {
     try {
+      console.log("[Entry Extension] 댓글 등록 시작", { commentText, stickerId });
+      
       // 페이지가 완전히 로드될 때까지 대기 (2초)
       await new Promise(resolve => setTimeout(resolve, 2000));
       
@@ -146,6 +148,8 @@ function simulateUserComment(commentText, stickerId) {
       if (replyButtons.length === 0) {
         throw new Error("댓글 버튼을 찾을 수 없습니다");
       }
+      
+      console.log("[Entry Extension] 댓글 버튼 찾음:", replyButtons.length);
       
       // 첫 번째 댓글 버튼 클릭
       replyButtons[0].click();
@@ -158,6 +162,8 @@ function simulateUserComment(commentText, stickerId) {
       if (!textarea) {
         throw new Error("댓글 입력창을 찾을 수 없습니다");
       }
+      
+      console.log("[Entry Extension] 댓글 입력창 찾음");
       
       // 댓글 내용 입력 (사용자가 직접 입력한 것처럼)
       textarea.focus();
@@ -180,6 +186,8 @@ function simulateUserComment(commentText, stickerId) {
       });
       textarea.dispatchEvent(changeEvent);
       
+      console.log("[Entry Extension] 댓글 내용 입력 완료:", commentText);
+      
       // 3. 스티커가 있는 경우 스티커 처리 (구현 필요시 추가)
       
       // 4. 등록 버튼 찾기 및 클릭 (1.5초 대기)
@@ -191,17 +199,23 @@ function simulateUserComment(commentText, stickerId) {
         submitButton = document.querySelector('button[type="submit"]');
       }
       if (!submitButton) {
-        submitButton = document.querySelector('a[role="button"]:not(.reply)');
+        submitButton = document.querySelector('a[role="button"]:not(.reply):not(.more):not(.like)');
       }
       if (!submitButton) {
-        // 모든 링크 중에서 "등록" 텍스트를 포함한 버튼 찾기
-        const allLinks = Array.from(document.querySelectorAll('a[role="button"]'));
-        submitButton = allLinks.find(link => link.textContent.includes('등록') || link.textContent.includes('Submit'));
+        // 모든 역할이 버튼인 요소 중에서 찾기
+        const allButtons = Array.from(document.querySelectorAll('[role="button"]'));
+        submitButton = allButtons.find(btn => 
+          btn.textContent.includes('등록') || 
+          btn.textContent.includes('Submit') ||
+          btn.classList.toString().includes('submit')
+        );
       }
       
       if (!submitButton) {
         throw new Error("등록 버튼을 찾을 수 없습니다 (시도한 선택자: a.css-1adjw8a, button[type=submit], a[role=button])");
       }
+      
+      console.log("[Entry Extension] 등록 버튼 찾음", submitButton);
       
       // 등록 버튼 클릭
       submitButton.click();
@@ -212,6 +226,7 @@ function simulateUserComment(commentText, stickerId) {
       // 성공 결과 설정
       result.success = true;
       result.message = "댓글이 성공적으로 등록되었습니다";
+      console.log("[Entry Extension] 댓글 등록 완료");
     } catch (error) {
       // 오류 발생 시 결과 설정
       result.success = false;
@@ -222,6 +237,8 @@ function simulateUserComment(commentText, stickerId) {
       chrome.runtime.sendMessage({
         action: "commentCompleted",
         result: result
+      }).catch(err => {
+        console.error("[Entry Extension] 메시지 전송 오류:", err);
       });
     }
   })();
