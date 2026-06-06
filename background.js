@@ -62,11 +62,11 @@ async function postCommentInBackground(postUrl, commentText, stickerId, sourceTa
     
     // 작업 완료를 기다리는 Promise 반환
     return new Promise((resolve, reject) => {
-      // 최대 15초 타임아웃 설정 (기존 30초에서 단축)
+      // 최대 30초 타임아웃 설정 (충분한 시간 확보)
       const timeout = setTimeout(() => {
         cleanupTab(tab.id);
         reject(new Error("댓글 등록 시간 초과"));
-      }, 5000);
+      }, 30000);
       
       // 댓글 등록 완료 메시지를 기다리는 리스너
       chrome.runtime.onMessage.addListener(function completionListener(msg, sender) {
@@ -138,8 +138,8 @@ function simulateUserComment(commentText, stickerId) {
   // 비동기 작업을 위한 즉시 실행 함수
   (async function() {
     try {
-      // 페이지가 완전히 로드될 때까지 추가 대기
-      await new Promise(resolve => setTimeout(resolve,30));
+      // 페이지가 완전히 로드될 때까지 대기 (2초)
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // 1. 댓글 버튼 찾기 및 클릭
       const replyButtons = Array.from(document.querySelectorAll('a.reply'));
@@ -150,8 +150,8 @@ function simulateUserComment(commentText, stickerId) {
       // 첫 번째 댓글 버튼 클릭
       replyButtons[0].click();
       
-      // 댓글 입력창이 나타날 때까지 대기
-      await new Promise(resolve => setTimeout(resolve, 3));
+      // 댓글 입력창이 나타날 때까지 대기 (1초)
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // 2. 댓글 입력창 찾기 및 내용 입력
       const textarea = document.querySelector('textarea#Write');
@@ -173,21 +173,41 @@ function simulateUserComment(commentText, stickerId) {
       textarea.value = commentText;
       textarea.dispatchEvent(inputEvent);
       
+      // change 이벤트도 발생 (React 상태 업데이트용)
+      const changeEvent = new Event('change', {
+        bubbles: true,
+        cancelable: true
+      });
+      textarea.dispatchEvent(changeEvent);
+      
       // 3. 스티커가 있는 경우 스티커 처리 (구현 필요시 추가)
       
-      // 4. 등록 버튼 찾기 및 클릭 
-      await new Promise(resolve => setTimeout(resolve, 3));
+      // 4. 등록 버튼 찾기 및 클릭 (1.5초 대기)
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const submitButton = document.querySelector('a[data-btn-type="login"][data-testid="button"]');
+      // 더 나은 선택자 사용 (여러 선택자 시도)
+      let submitButton = document.querySelector('a.css-1adjw8a.e13821ld2');
       if (!submitButton) {
-        throw new Error("등록 버튼을 찾을 수 없습니다");
+        submitButton = document.querySelector('button[type="submit"]');
+      }
+      if (!submitButton) {
+        submitButton = document.querySelector('a[role="button"]:not(.reply)');
+      }
+      if (!submitButton) {
+        // 모든 링크 중에서 "등록" 텍스트를 포함한 버튼 찾기
+        const allLinks = Array.from(document.querySelectorAll('a[role="button"]'));
+        submitButton = allLinks.find(link => link.textContent.includes('등록') || link.textContent.includes('Submit'));
+      }
+      
+      if (!submitButton) {
+        throw new Error("등록 버튼을 찾을 수 없습니다 (시도한 선택자: a.css-1adjw8a, button[type=submit], a[role=button])");
       }
       
       // 등록 버튼 클릭
       submitButton.click();
       
-      // 댓글 등록 완료 대기
-      await new Promise(resolve => setTimeout(resolve, 3));
+      // 댓글 등록 완료 대기 (2초)
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // 성공 결과 설정
       result.success = true;
